@@ -1,0 +1,138 @@
+---
+title: "PA2"
+output: html_document
+---
+#NOAA Storm Database:Analysis of Storm Effects on (i)Public Health and (ii)Economy for Communities
+
+###Synopsis 
+This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) Storm database which records characteristics of major weather events and estimates of fatalities, injuries and property damage. We identify the top event-types in terms of aggregate and per event average impact on population health and property damage. 
+
+### Loading & Preprocessing Data
+The following libraries are required for the following analysis
+```{r}
+    options(rpubs.upload.method = "internal")
+    options(RCurlOptions = list(verbose = FALSE, 
+                              capath = system.file("CurlSSL", "cacert.pem", 
+                                                   package = "RCurl"), 
+                              ssl.verifypeer = FALSE))
+    library(ggplot2)
+    library(data.table)
+    library(plyr)
+```
+
+### Data Processing
+
+To load the data, storm data from the downloaded csv file is read. The data is then filtered to contain only the required columns of 
+- event type
+- fatalities & injuries
+- property and crop damage & their corresponding exponentials
+
+The resulting dataset shows events from January 1950 to November 2011.
+```{r loadData, cache=TRUE}
+    #load the dataset from course website 
+    URL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+    #download.file(URL, destfile="data.csv.bz2", method="curl")
+
+    data <- read.csv(bzfile("data.csv.bz2"))
+    
+    #subsetting the full data to only the data that is needed
+    data_subset <- data[ , c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", 
+                           "CROPDMG", "CROPDMGEXP")]
+```
+
+### Impact on Public Health
+This section of analysis examines the impact of storm on public health, namely the fatalities and injuries caused.
+
+```{r}
+    healthCost <- function(fieldName, top = 10, dataset = data_subset){
+        index <- which(colnames(dataset) == fieldName)
+        field <- aggregate(dataset[ , index], by = list(dataset$EVTYPE), FUN="sum")
+        names(field) <- c("EVTYPE", fieldName)
+        field <- arrange(field, field[ ,2], decreasing = T)
+        field <- within(field, EVTYPE <- factor(x = EVTYPE, levels = field$EVTYPE))
+        field <- field[1:top, ]
+    return(field)
+    }
+
+    fatalities <- healthCost("FATALITIES")
+    injuries <- healthCost("INJURIES")
+```
+
+Plotting the impact of storm data on fatalities 
+```{r}
+   ggplot(fatalities, aes(x = EVTYPE, y = FATALITIES)) + 
+          geom_bar(stat ="identity") + ggtitle("Fatalities by Event Type (Top 10)") +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+Plotting the impact of storm data on injuiries 
+```{r}
+    ggplot(injuries, aes(x = EVTYPE, y = INJURIES)) + 
+          geom_bar(stat ="identity") + ggtitle("Injuries by Event Type (Top 10)") +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+### Section 2 : Impact on Economy (Property and Crop Damages)
+According to code book (STORM EVENTS), columns *"PROPDMGEXP"* and *"CROPDMGEXP"* are exponentials to the amount of damage done where we have Hundred (H), Thousand (K), Million (M) and Billion (B).
+```{r}
+    #subset all non-zeros in either property or crop damages; remove health fields too
+    economicData <- subset(data_subset, !(PROPDMG==0 & CROPDMG==0), 
+                           select = -c(FATALITIES,INJURIES))
+```
+
+The **R** function *economicCost* takes in the *ecnomomicData* dataset, calculates the actual cost of damages done and returns the top 10 event types that caused the most economic damage.
+```{r}
+    economicCost <- function(category, d1 = economicData){
+
+        i <- which(colnames(d1) == category) + 1
+        
+        d1[, i] <- toupper(as.character(d1[, i]))
+        
+        #replace the exponents with actual values
+        d1[d1[, i] == "B", i] <- "1000000000"
+        d1[d1[, i] == "M", i] <- "1000000"
+        d1[d1[, i] == "K", i] <- "1000"
+        d1[d1[, i] == "H", i] <- "100"
+        d1[d1[, i] == "", i] <- "1"
+        
+        #multiply the field values by exponents to get actual damage costs  
+        d1[, i] <- as.numeric(d1[, i])
+        cost <- d1[ ,i-1] * d1[ ,i]
+        d1 <- cbind(d1, cost)
+        
+        #summarise actual damage costs by event type ; arrange and show top 10
+        data <- aggregate(d1$cost, by = list(d1$EVTYPE), FUN="sum")
+        data <- arrange(data, data[ ,2], decreasing = TRUE)
+        data <- data[1:10, ]
+        names(data) <- c("EVTYPE", "cost")
+        return(data)
+    }
+
+    propCost <- economicCost("PROPDMG")
+    cropCost <- economicCost("CROPDMG")
+```
+
+**Plotting the economic cost on Property** 
+We see that `r propCost[1,1]` caused the most damage (US$`r propCost[1,2]`).
+```{r}
+    ggplot(propCost, aes(x = EVTYPE, y = cost)) + 
+           geom_bar(stat ="identity") + 
+           ggtitle("Property Damages by Event Type (Top 10)") +
+           theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+**Plotting the economic cost on Crop.** 
+We see that `r cropCost[1,1]` caused the most damage (US$`r cropCost[1,2]`).
+```{r}
+      ggplot(cropCost, aes(x = EVTYPE, y = cost)) + 
+              geom_bar(stat ="identity") + 
+              ggtitle("Crop Damages by Event Type (Top 10)") +
+              theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+### Results
+Based on the analysis, we find that
+1. **excessive heat** and **tornadoes** caused the most injuries and fatalities;
+2. **flood** and **hurricane/typhoon** cause most property damage; **drought** and **flood** causes most crop damage in the United States from 1950 to 2011.
+
+
