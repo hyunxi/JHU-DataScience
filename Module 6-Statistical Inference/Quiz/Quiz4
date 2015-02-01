@@ -1,0 +1,54 @@
+> pharm <- data.frame(base = c(140,138,150,148,135), week2 = c(132,135,151,146,130))
+> t.test (pharm$base, pharm$week2, paired = TRUE)
+
+  Paired t-test
+
+data:  pharm$base and pharm$week2
+t = 2.2616, df = 4, p-value = 0.08652
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -0.7739122  7.5739122
+sample estimates:
+mean of the differences 
+                    3.4 
+
+> n=9
+> mean = 1100
+> sd=30
+> Xbar = mean + c(-1,1) * (sd/sqrt(n)) * qt(.975,8)
+> Xbar
+[1] 1076.94 1123.06
+
+> # Problem 3. P-value
+> library(stats)
+> binom.test(x = 3, n = 4, p = .5, alt = "greater") # p-value = 0.3125
+
+	Exact binomial test
+
+data:  3 and 4
+number of successes = 3, number of trials = 4, p-value = 0.3125
+alternative hypothesis: true probability of success is greater than 0.5
+95 percent confidence interval:
+ 0.2486046 1.0000000
+sample estimates:
+probability of success 
+                  0.75 
+
+> p = 1/100
+> q = 10/1787
+> n = 1787
+> serror = sqrt((p * (1-p))/n)
+> z = (p-q) / serror
+> pnorm(z, lower.tail = FALSE)
+[1] 0.03066625
+
+
+> n=100
+> mu = 0.01
+> sd = 0.04
+> power.t.test(n,delta = mu, sd = sd, type = "one.sample", alt = "one.sided")$power
+[1] 0.7989855
+
+> power = 0.9
+> power.t.test(power=power,delta = mu, sd = sd, type = "one.sample", alt = "one.sided")$n
+[1] 138.3856

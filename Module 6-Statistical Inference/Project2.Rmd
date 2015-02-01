@@ -1,0 +1,94 @@
+---
+title: 'Statistical Inference Course : Project 2'
+author: "Han Yunxi"
+date: "18 January 2015"
+output: pdf_document
+---
+
+###Analysis of ToothGrowth data in R dataset
+
+This project requires us to load the **ToothGrowth** data from the default dataset in R and perform to some basic exploratory data analyses and provide a basic summary of the data.
+
+###Basic Data Exploration & Summary
+
+For basic data exploration, We first load the **R** library **ToothGrowth** dataset and use the command  `library(help = "datasets")` to understand the dataset. From the description, we understand the dataset title is: **The Effect of Vitamin C on Tooth Growth in Guinea Pigs**.  
+
+```{r}
+  library(datasets)
+  str(ToothGrowth)      #structure of the dataset
+  summary(ToothGrowth)  #table summary
+```
+
+The dataset is a [`r nrow(ToothGrowth)` rows by `r ncol(ToothGrowth)` columns] dataframe and contains information on (a) Length of tooth - `len`, (b) Supplement Type - `supp` and (c) Dosage given - `dose`. 
+
+In addition, we find that the maximum tooth length is *`r max(ToothGrowth$len)`* and the minimum is *`r min(ToothGrowth$len)`*, with the average tooth growth length at *`r round(mean(ToothGrowth$len),2)`*. There are only 2 types of supplement (Orange Juice or Vitamin C). For the dosage level, we find that there are only 3 levels of dosage (0.5,1 and 2).
+
+We also plot the dataset below to understand the effects of supplement and dosage on tooth growth. From the plot, we can see that Vitamin C results in larger range of tooth growth **(i.e. larger variance)** and Orange Juice gives limited but more predictable growth **(i.e. more points centred around a particular region)**
+
+```{r}
+  library(ggplot2)
+  qplot(supp, len, data=ToothGrowth, colour=factor(dose)) + 
+  geom_line(data=ToothGrowth) + 
+  geom_smooth(aes(group=dose), method="lm")
+```
+
+###Statistical Inference
+
+For the next section, we use Student's t-test for paired samples to compare tooth growth by supplement and dose. The aim is to see if for the same dosage of 2 different supplements, there was an improvement, deterioration, or if the means of tooth length have remained substantially the same (hypothesis $H_0$).   
+
+####Assumption
+For small samples of only 10, we assume that Gosset's $t$ distribution. We also assume the distribution of the data is roughly symmetric and mound shaped.
+
+Paired observations are often analyzed using the $t$ interval by taking differences. We  assume that the ToothGrowth dataset is paired, i.e. OJ and VC is given to same 10 test subjects or between pairs of guinea pigs matched into meaningful groups.
+
+Degree of freedom used is *(n-1)* or 9.
+
+R function `myCI` takes in the *dosage* parameter and calculates the 95% confidence interval of the tooth growth length. The function is as seen below.
+
+```{r}
+  library(dplyr)
+```
+
+```{r}
+  myCI <- function(dosage){
+    vitaminGroup <- filter(ToothGrowth, supp == "VC", dose == dosage)  
+    orangeGroup <- filter(ToothGrowth, supp == "OJ", dose == dosage)
+
+    #Method 1: Using Mathematical Formula
+    difference <- orangeGroup$len - vitaminGroup$len 
+    mn <- mean(difference)
+    s <- sd(difference)
+    n <- 10
+  
+    CI <- round(mn + c(-1, 1) * qt(.975, n-1) * s / sqrt(n) , 2)
+    cat("We are 95% confident that for dosages of", dosage ,"mg 
+    Orange Juice supplements affects tooth growth than Vitamin C by (", CI , ")mm.")
+    
+    #Method 2: Using R
+    t <- t.test(orangeGroup$len, vitaminGroup$len, paired=TRUE, var=FALSE, 
+                conf.level = 0.95)
+    t
+  }
+```
+
+####Results - Confidence Intervals for 0.5, 1.0 and 2.0 mg dosage 
+```{r}
+  myCI(0.5)
+  myCI(1.0)
+  myCI(2.0)
+```
+
+####Conclusion
+
+There are 2 ways to interpret the results, by p-values or by t-value. 
+
+First, if the p-value is greater than 0.05, then we can accept the hypothesis $H_0$ there is no difference in tooth length be it taking Vitamin C or Orange Juice. 
+
+Secondly, we can calculate the t-tabulated value: ```{r} qt(0.975, 9)```. If (t-computed < t-tabulated), so we accept the null hypothesis $H_0$
+
+**In conclusion, Orange Juice has significant improvement to tooth growth over Vitamin C at doses of 0.5 and 1.0 mg (reject $H_0$), whereas there is no significant difference at 2.0mg (accept $H_0$).** This is in line with the results in the graph on page 1.
+
+###Reference
+-http://docs.ggplot2.org/current/geom_smooth.html
+-http://www.r-bloggers.com/paired-students-t-test/
+
