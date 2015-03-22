@@ -59,7 +59,7 @@ fitInterceptRes <- fitIntercept$residuals ^ 2
 sum(fitRes) /sum(fitInterceptRes) 
 # 0.2471672
 
-# Problem 10.
+# Q10.
 sum(resid(fit))
 # If an intercept is included, then they will sum to 0.
 

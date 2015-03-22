@@ -1,0 +1,114 @@
+---
+title: "PML Quantified Self Assignment"
+author: "Han Yunxi"
+date: "18 March 2015"
+output: html_document
+---
+
+## Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+## Exploratory Data Analysis (EDA)
+From the instructions, the goal is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. We will download and read the datasets into dataframes and clean/preprocess the dataframe.  
+```{r} 
+### Load the necessary libraries
+  set.seed(1)
+  library(caret)
+  library(ggplot2)
+
+### Set the working directory
+  #setwd("./Module 8-Practical Machine Learning/")
+
+### Download the datasets
+  trainingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+  testingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+  trainingFile <- "./data/pml-training.csv"
+  testingFile <- "./data/pml-testing.csv"
+  
+  if (!file.exists("./data")) { dir.create("./data") }
+  if (!file.exists(trainingFile)) {download.file(trainingURL, destfile=trainingFile, method="curl")}
+  if (!file.exists(testingFile)) {download.file(testingURL, destfile=testingFile, method="curl")}
+
+### Read the csv files
+
+  trainData <- read.csv(trainingFile, na.strings=c("NA", ""))
+  testData <- read.csv(testingFile, na.strings=c("NA", ""))
+
+### Clean the datasets
+
+  trainData <- trainData [ , colSums(is.na(trainData)) ==  0] # 60 columns left
+
+```
+### Machine Learning ###
+
+#### Slice the data ####
+Using the Training Dataset, we partition the dataset into 60/40
+```{r}
+  inTrain <- createDataPartition(trainData$classe , p=0.6, list=FALSE)
+  training <- trainData[inTrain, ]
+  testing <- trainData[-inTrain, ]
+  
+  # Removing variables that do not contribute to predictors:Columns 1..6
+  removeIndex <- as.integer(c(1,2,3,4,5,6))
+  training <- training[ , -removeIndex]
+  testing <- testing[ ,-removeIndex]
+```
+
+### Modelling ###
+*Predicting with random forests* by bootstrapping samples, then resample the observed data and the training dataset. And rebuild the classification trees on each of those bootstrap samples. The idea is to grow a large number of trees and to vote/average the trees to get the prediction.
+
+The `caret` library is used for building the model, with method 'rf' for classification trees
+
+```{r}
+ # modelFit <- train(classe ~ . , method="rpart", data = training)
+ #  print(modelFit$finalModel)
+
+  mytrControl = trainControl(method = "cv", number = 4)
+  model2Fit <- train(classe ~.,data = training, method="rf", 
+                     trControl = mytrControl, prox=TRUE)
+```
+
+Evaluate the model on the testing dataset.
+```{r echo=FALSE}
+  predicted <- predict(model2Fit, testing)
+```
+
+```{r}
+  confusionMatrix(predicted, testing$classe)
+```
+The overall accuracy is 0.9987.
+
+The model is then validated against the course project submission exercise and is applied to the test dataset to predict the classe. 
+```{r}
+  testData <- testData[ , -removeIndex]
+  answers <- predict(model2Fit, testData)
+```
+
+Answers submitted to Coursera are 20/20, hence it is a good predictive model.
+```{r eval=FALSE ,echo=FALSE}
+  pml_write_files = function(x){
+  n = length(x)
+  dir <- "assignment_ans"
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=file.path(dir,filename),quote=FALSE,
+                row.names=FALSE,col.names=FALSE)
+    }
+  }
+
+  pml_write_files(answers)
+```
+
+### References ###
+1. Training and test datasets are from *http://groupware.les.inf.puc-rio.br/har*
+
+### Diagrams ###
+Visualisation of the decision tree
+```{r}
+  library(ggplot2)  
+  library(rpart)
+  library(rpart.plot)
+  tree <- rpart(classe ~ ., data = training, method="class")
+  prp(tree)
+```

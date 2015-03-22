@@ -63,6 +63,13 @@ fit_Interaction <- lm(mpg ~ wt + qsec + am + wt*am , data = mtcars)
 
 The adjusted $R^2$ for model 4 is 0.88, which is the best by far. Hence the final regression equation (model 4) will be **mpg = 9.72 + (-2.93)wt + 1.01qsec + 14.08am + (-4.14)wt:am**. 
 
+###Anova
+We can use the anova() function to compare the 4 models and obtain the significance in the change in $R^2$.
+```{r}
+anova(fit_Full, fit_EDA, fit_Stepwise, fit_Interaction)
+```
+The significant F-statistic informs us that the change in $R^2$ is significant, i.e. model 4 is a better fit to the data than model 1,2,3.
+
 ###Residual Diagnostics
 After selecting regression values and fitting the regression model 4, it is necessary to plot the residuals to investigate good/poor model fit. The results are 1. The Residuals vs. Fitted plot shows no systematic patterns and the variation in the residuals does not seem to change with the size of the fitted values. 2. The histogram of residuals is normally distrubuted.
 
@@ -93,12 +100,12 @@ a<-summary(fit_EDA)$adj.r.squared
 b<-summary(fit_Full)$adj.r.squared
 c<-summary(fit_Stepwise)$adj.r.squared
 d<-summary(fit_Interaction)$adj.r.squared
-R <- c(a,b,c,d)
+R <- matrix( c("Model 1", "Model 2", "Model 3", "Model 4", a,b,c,d), nrow =2, ncol = 4, byrow =TRUE)
 R
 ```
 
 ###Residual Diagnostics
-```{r echo=FALSE}
+```{r}
 par(mfrow=c(2,2))
 plot(mtcars$wt, residuals(fit_Interaction), xlab="wt")
 plot(mtcars$qsec, residuals(fit_Interaction), xlab="qsec")
@@ -107,5 +114,6 @@ plot(fitted(fit_Interaction), residuals(fit_Interaction),
      xlab = "Predicted mpg", ylab ="Residuals", main = "Residuals vs Fitted")
 
 hist(residuals(fit_Interaction), main="Histogram of Residuals")
+plot(fit_Interaction)
 ```
 
