@@ -108,4 +108,4 @@ plot(fitted(fit_Interaction), residuals(fit_Interaction),
 
 hist(residuals(fit_Interaction), main="Histogram of Residuals")
 ```
-
+### http://hyunxi.github.io/JHU-DataScience/Module%207-Regression%20Models/Course_Project.html
